@@ -1,0 +1,150 @@
+# Base docker-compose — shared service definition.
+# Pre-built images: ghcr.io/nextlevelbuilder/goclaw (also on Docker Hub: digitop/goclaw)
+#
+# Combine with overlays for your deployment:
+#
+#   Recommended (+ Web Dashboard, pre-built images):
+#     docker compose -f docker-compose.yml -f docker-compose.postgres.yml -f docker-compose.selfservice.yml up -d
+#
+#   Build from source (add --build):
+#     docker compose -f docker-compose.yml -f docker-compose.postgres.yml -f docker-compose.selfservice.yml up -d --build
+#
+#   Without dashboard:  docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d
+#   With OTel tracing:  docker compose -f docker-compose.yml -f docker-compose.postgres.yml -f docker-compose.otel.yml up -d --build
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-goclaw}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-goclaw}
+      POSTGRES_DB: ${POSTGRES_DB:-goclaw}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-goclaw} -d ${POSTGRES_DB:-goclaw}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+
+  chrome:
+    image: zenika/alpine-chrome:124
+    command:
+      - --no-sandbox
+      - --remote-debugging-address=0.0.0.0
+      - --remote-debugging-port=9222
+      - --remote-allow-origins=*
+      - --disable-gpu
+      - --disable-dev-shm-usage
+    ports:
+      - "${CHROME_CDP_PORT:-9222}:9222"
+    shm_size: 2gb
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9222/json/version >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+    restart: unless-stopped
+
+  goclaw:
+    image: ghcr.io/nextlevelbuilder/goclaw:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ENABLE_OTEL: "${ENABLE_OTEL:-false}"
+        ENABLE_PYTHON: "${ENABLE_PYTHON:-true}"
+        ENABLE_FULL_SKILLS: "${ENABLE_FULL_SKILLS:-true}"
+        ENABLE_REDIS: "true"
+    ports:
+      - "${GOCLAW_PORT:-18790}:18790"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      chrome:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - GOCLAW_HOST=0.0.0.0
+      - GOCLAW_PORT=18790
+      - GOCLAW_CONFIG=/app/data/config.json
+      - GOCLAW_GATEWAY_TOKEN=${GOCLAW_GATEWAY_TOKEN:-}
+      - GOCLAW_ENCRYPTION_KEY=${GOCLAW_ENCRYPTION_KEY:-}
+      - GOCLAW_SKILLS_DIR=/app/data/skills
+      - GOCLAW_POSTGRES_DSN=postgres://${POSTGRES_USER:-goclaw}:${POSTGRES_PASSWORD:-goclaw}@postgres:5432/${POSTGRES_DB:-goclaw}?sslmode=disable
+      - GOCLAW_REDIS_DSN=redis://redis:6379/0
+      - GOCLAW_BROWSER_REMOTE_URL=ws://chrome:9222  
+      # Debug
+      - GOCLAW_TRACE_VERBOSE=${GOCLAW_TRACE_VERBOSE:-0}
+    volumes:
+      - goclaw-data:/app/data
+      - goclaw-skills:/app/skills
+      - goclaw-workspace:/app/workspace
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+          pids: 200
+    networks:
+      - default
+      - shared
+    restart: unless-stopped
+
+  goclaw-ui:
+    image: ghcr.io/nextlevelbuilder/goclaw-web:latest
+    build:
+      context: ./ui/web
+      dockerfile: Dockerfile
+    ports:
+      - "${GOCLAW_UI_PORT:-3000}:80"
+    networks:
+      - default
+      - shared
+    depends_on:
+      - goclaw
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  goclaw-data:
+  goclaw-skills:
+  goclaw-workspace:
+
+networks:
+  shared:
+    name: shared
+    driver: bridge

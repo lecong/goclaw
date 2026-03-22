@@ -75,12 +75,9 @@ services:
         ENABLE_FULL_SKILLS: "${ENABLE_FULL_SKILLS:-true}"
         ENABLE_REDIS: "true"
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      chrome:
-        condition: service_healthy
+      - postgres
+      - redis
+      - chrome
     ports:
       - "${GOCLAW_PORT:-18790}:18790"
     environment:

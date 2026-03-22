@@ -24,13 +24,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-goclaw}
     volumes:
       - postgres-data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-goclaw} -d ${POSTGRES_DB:-goclaw}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    networks:
-      - goclaw
     restart: unless-stopped
 
   redis:
@@ -40,8 +33,6 @@ services:
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
-    networks:
-      - goclaw
     restart: unless-stopped
 
   chrome:
@@ -66,8 +57,6 @@ services:
         limits:
           memory: 2G
           cpus: '2.0'
-    networks:
-      - goclaw
     restart: unless-stopped
 
   goclaw:
@@ -119,8 +108,6 @@ services:
           memory: 1G
           cpus: '2.0'
           pids: 200
-    networks:
-      - goclaw
     restart: unless-stopped
 
   goclaw-ui:
@@ -132,8 +119,6 @@ services:
       - "${GOCLAW_UI_PORT:-3000}:80"
     depends_on:
       - goclaw
-    networks:
-      - goclaw
     restart: unless-stopped
 
 volumes:
@@ -142,6 +127,3 @@ volumes:
   goclaw-data:
   goclaw-skills:
   goclaw-workspace:
-
-networks:
-  goclaw:

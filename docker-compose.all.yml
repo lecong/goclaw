@@ -29,6 +29,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - goclaw
     restart: unless-stopped
 
   redis:
@@ -38,6 +40,8 @@ services:
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
+    networks:
+      - goclaw
     restart: unless-stopped
 
   chrome:
@@ -62,6 +66,8 @@ services:
         limits:
           memory: 2G
           cpus: '2.0'
+    networks:
+      - goclaw
     restart: unless-stopped
 
   goclaw:
@@ -113,6 +119,8 @@ services:
           memory: 1G
           cpus: '2.0'
           pids: 200
+    networks:
+      - goclaw
     restart: unless-stopped
 
   goclaw-ui:
@@ -123,6 +131,8 @@ services:
     ports:
       - "${GOCLAW_UI_PORT:-3000}:80"
     depends_on:
+      - goclaw
+    networks:
       - goclaw
     restart: unless-stopped
 

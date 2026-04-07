@@ -1,3 +1,19 @@
 # Ensure shell scripts always use LF line endings (critical for Docker builds on Windows)
 *.sh text eol=lf
 docker-entrypoint.sh text eol=lf
+_readmes/**/* merge=theirs
+_statics/**/* merge=theirs
+.github/**/* merge=theirs
+cmd/**/* merge=theirs
+compose.d/**/* merge=theirs
+compose.options/**/* merge=theirs
+docker/**/* merge=theirs
+docs/**/* merge=theirs
+internal/**/* merge=theirs
+migrations/**/* merge=theirs
+options/**/* merge=theirs
+pkg/**/* merge=theirs
+scripts/**/* merge=theirs
+skills/**/* merge=theirs
+tests/**/* merge=theirs
+ui/**/* merge=theirs

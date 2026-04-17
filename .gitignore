@@ -50,6 +50,7 @@ goclaw-lite-*.zip
 .mcp.json
 tmp
 .claude/
+.omc/
 
 deploy-*.sh
 

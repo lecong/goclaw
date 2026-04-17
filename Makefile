@@ -2,7 +2,7 @@ VERSION ?= $(shell git describe --tags --abbrev=0 --match "v[0-9]*" 2>/dev/null 
 LDFLAGS  = -s -w -X github.com/nextlevelbuilder/goclaw/cmd.Version=$(VERSION)
 BINARY   = goclaw
 
-.PHONY: build build-full build-tui run clean version up down logs reset test vet check-web dev migrate setup ci desktop-dev desktop-build desktop-dmg
+.PHONY: build build-full build-tui run clean version up down logs reset test vet check-web dev migrate setup ci desktop-dev desktop-build desktop-dmg sync-upstream
 
 # Build backend only (API-only, no embedded web UI)
 build:
@@ -103,6 +103,35 @@ desktop-dev:
 
 desktop-build:
 	cd ui/desktop && wails build -tags sqliteonly -ldflags="-s -w -X github.com/nextlevelbuilder/goclaw/cmd.Version=$(VERSION)"
+
+# ── Sync from upstream ──
+# Fetch latest upstream and merge. Files marked merge=theirs in .gitattributes
+# auto-accept upstream. Files marked merge=ours keep your local version.
+# Any remaining conflicts must be resolved manually.
+UPSTREAM_REMOTE ?= upstream
+UPSTREAM_BRANCH ?= main
+
+sync-upstream:
+	@echo "── Configuring merge drivers ──"
+	git config merge.theirs.name "Always use theirs"
+	git config merge.theirs.driver "cp %B %A"
+	git config merge.ours.name "Always use ours"
+	git config merge.ours.driver true
+	@echo "── Fetching $(UPSTREAM_REMOTE)/$(UPSTREAM_BRANCH) ──"
+	git fetch $(UPSTREAM_REMOTE) $(UPSTREAM_BRANCH)
+	@echo "── Merging $(UPSTREAM_REMOTE)/$(UPSTREAM_BRANCH) ──"
+	@if git merge $(UPSTREAM_REMOTE)/$(UPSTREAM_BRANCH) --no-edit; then \
+		echo "✓ Merge completed cleanly."; \
+	else \
+		echo ""; \
+		echo "⚠ Merge has conflicts. Resolve them manually:"; \
+		echo "  git status              # see conflicted files"; \
+		echo "  git diff                # review conflicts"; \
+		echo "  git add <file>          # mark resolved"; \
+		echo "  git commit              # finalize merge"; \
+		echo ""; \
+		echo "To abort: git merge --abort"; \
+	fi
 
 desktop-dmg: desktop-build
 	@echo "Creating DMG..."

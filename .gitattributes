@@ -1,9 +1,10 @@
 # Ensure shell scripts always use LF line endings (critical for Docker builds on Windows)
 *.sh text eol=lf
 docker-entrypoint.sh text eol=lf
+
+# ── Upstream: always accept upstream version ──
 _readmes/**/* merge=theirs
 _statics/**/* merge=theirs
-.github/**/* merge=theirs
 cmd/**/* merge=theirs
 compose.d/**/* merge=theirs
 compose.options/**/* merge=theirs
@@ -17,3 +18,14 @@ scripts/**/* merge=theirs
 skills/**/* merge=theirs
 tests/**/* merge=theirs
 ui/**/* merge=theirs
+go.mod merge=theirs
+go.sum merge=theirs
+*.go merge=theirs
+
+# ── Local: always keep our version ──
+Dockerfile merge=ours
+docker-compose.yml merge=ours
+docker-compose.*.yml merge=ours
+docker-compose.all.yml merge=ours
+.github/**/* merge=ours
+.gitignore merge=ours
